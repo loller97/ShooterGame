@@ -9,8 +9,8 @@
 UShooterCharacterMovement::UShooterCharacterMovement(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	PrimaryComponentTick.bCanEverTick = true;
 }
-
 
 float UShooterCharacterMovement::GetMaxSpeed() const
 {
@@ -31,3 +31,5 @@ float UShooterCharacterMovement::GetMaxSpeed() const
 
 	return MaxSpeed;
 }
+
+

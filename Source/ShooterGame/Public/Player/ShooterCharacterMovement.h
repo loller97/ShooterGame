@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include "GameFramework/Character.h"
 #include "ShooterCharacterMovement.generated.h"
 
 UCLASS()
@@ -13,5 +14,6 @@ class UShooterCharacterMovement : public UCharacterMovementComponent
 	GENERATED_UCLASS_BODY()
 
 	virtual float GetMaxSpeed() const override;
+
 };
 

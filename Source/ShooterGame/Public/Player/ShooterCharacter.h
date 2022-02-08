@@ -8,10 +8,26 @@
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnShooterCharacterEquipWeapon, AShooterCharacter*, AShooterWeapon* /* new */);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnShooterCharacterUnEquipWeapon, AShooterCharacter*, AShooterWeapon* /* old */);
 
+//Enum for the direction of the wall the character want to wallrun
+UENUM(BlueprintType)				
+enum class EWallRunSide : uint8 {
+	left UMETA(DisplayName = "LEFT"),
+	right UMETA(DisplayName = "RIGHT"),
+};
+
+//Enum for the reason the character end the wallrun
+UENUM(BlueprintType)
+enum class EWallRunEndReason : uint8 {
+	fallOff UMETA(DisplayName = "FALL OFF WALL"),
+	jumpedOff UMETA(DisplayName = "JUMPED OFF WALL"),
+};
+
 UCLASS(Abstract)
 class AShooterCharacter : public ACharacter
 {
 	GENERATED_UCLASS_BODY()
+
+	virtual void BeginPlay() override;
 
 	virtual void BeginDestroy() override;
 
@@ -388,6 +404,104 @@ protected:
 
 	/** Responsible for cleaning up bodies on clients. */
 	virtual void TornOff();
+
+
+	//WallRun variables
+
+	//Keep the direction of the current wallrun
+	FVector WallRunDirection;
+
+	//To know if the character is currently wallrunning
+	bool WallRunning;
+
+	//jumps left, more useful if you can jump more than ones
+	int JumpsLeft;
+
+	//This change how many jumps you can make in game
+	int MaxJumps = 1;	
+
+	//This two variables keep track if axis buttons are pressed
+	float RightAxis;	
+
+	float ForwardAxis;	
+
+	//Know wich side of the character is the wall to wallrun
+	EWallRunSide WallRunSide;	
+
+	//Timeline that handle the wallrunning
+	FTimeline WallRunTimeline;
+
+	//Timeline that handle the camera tilt of the wallrunning
+	FTimeline CameraTiltTimeline;
+
+	//the curves for the timelines
+	UPROPERTY(EditAnywhere, Category = "Animation")
+		UCurveFloat* WallRunCurve;
+
+	UPROPERTY(EditAnywhere, Category = "Animation")
+		UCurveFloat* CameraTiltCurve;
+
+	//Consume a jump if the chacter can and have jumpsleft, more useful if you can jump more than ones
+	UFUNCTION()
+	FString ConsumeJump();
+
+	//Reset the jumps left
+	void ResetJump(int jumps);
+
+	//Check if the player hits the ground
+	virtual void Landed(const FHitResult& Hit) override;
+
+	//The function that take the surface info and start the wallrunning system if everything is ok
+	UFUNCTION()
+	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	//Setup the wallrun and start the WallRunTimeline
+	void BeginWallRun();
+
+	//The exact opposite of BeginWallRun, but with the reason of the end olso sets the jumps left
+	void EndWallRun(EWallRunEndReason Reason);
+
+	//Start the CameraTiltTimeline
+	void BeginCameraTilt();
+
+	//Reverse the CameraTiltTimeline to return the camera roll back to normal
+	void EndCameraTilt();
+
+	//return the direction in FVector and the EWallRunSide enum from the normal of the wall
+	UFUNCTION()
+		EWallRunSide FindRunDirectionAndSide(FVector WallNormal, FVector& ResultDirection);
+
+	//return if the surface is wallrunnable
+	UFUNCTION(BlueprintPure)
+		bool CanSurfaceBeWallRan(FVector SurfaceNormal);
+
+	//find the velocity for the jump
+	UFUNCTION(BlueprintPure)
+		FVector FindLaunchVelocity();
+
+	//check if you need to hold down a button (example: if you want to keep wallrunning and the wall is on your left, you need to hold the left button)
+	UFUNCTION(BlueprintPure)
+		bool AreRequiredKeysDown();
+
+	//return the horizontal velocity
+	UFUNCTION(BlueprintPure)
+		FVector2D GetHorizontalVelocity();
+
+	//set the horizontal velocity in the CharacterMovementComponent
+	UFUNCTION()
+		void SetHorizontalVelocity(FVector2D HorizontalVelocity);
+
+	//Timeline function that handle the wallrun
+	UFUNCTION()
+		void UpdateWallRun(float Val);
+
+	//Timeline function that handle the camera tilt of the wallrun
+	UFUNCTION()
+		void UpdateCameraTilt(float Val);
+
+	//Function to ensure that the character don't take too much speed
+	UFUNCTION()
+		void ClampHorizontalVelocity();
 
 private:
 
