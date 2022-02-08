@@ -1,1 +1,4 @@
 Content/** filter=lfs diff=lfs merge=lfs -text
+BuildWindowsNoEditorShooterGameContentMoviesLoadingScreen.mp4 filter=lfs diff=lfs merge=lfs -text
+BuildWindowsNoEditorShooterGameContentMoviesLoadingScreen.webm filter=lfs diff=lfs merge=lfs -text
+BuildWindowsNoEditorShooterGameContentPaksShooterGame-WindowsNoEditor.pak filter=lfs diff=lfs merge=lfs -text
