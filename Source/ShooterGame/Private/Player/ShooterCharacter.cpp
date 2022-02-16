@@ -9,6 +9,7 @@
 #include "Animation/AnimInstance.h"
 #include "Sound/SoundNodeLocalPlayer.h"
 #include "AudioThread.h"
+#include "ShooterCharacterMovement.h"
 #include "Math/UnrealMathUtility.h"
 #include "Runtime/Engine/Classes/Components/TimelineComponent.h"
 #include "..\..\Public\Player\ShooterCharacter.h"
@@ -62,7 +63,7 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_PROJECTILE, ECR_Block);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_WEAPON, ECR_Ignore);
 
-	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AShooterCharacter::OnHit);
+	//GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AShooterCharacter::OnHit);
 
 	TargetingSpeedModifier = 0.5f;
 	bIsTargeting = false;
@@ -74,9 +75,9 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
-	WallRunning = false;
+	//WallRunning = false;
 
-	ResetJump(MaxJumps);
+	//ResetJump(MaxJumps);
 	GetCharacterMovement()->SetPlaneConstraintEnabled(true);
 }
 
@@ -604,6 +605,8 @@ void AShooterCharacter::DestroyInventory()
 	// remove all weapons from inventory and destroy them
 	for (int32 i = Inventory.Num() - 1; i >= 0; i--)
 	{
+		if (CurrentWeapon)
+			DropWeapon(CurrentWeapon);
 		AShooterWeapon* Weapon = Inventory[i];
 		if (Weapon)
 		{
@@ -628,6 +631,14 @@ void AShooterCharacter::RemoveWeapon(AShooterWeapon* Weapon)
 	{
 		Weapon->OnLeaveInventory();
 		Inventory.RemoveSingle(Weapon);
+	}
+}
+
+void AShooterCharacter::DropWeapon(AShooterWeapon* Weapon)
+{
+	if (Weapon && GetLocalRole() == ROLE_Authority) 
+	{
+
 	}
 }
 
@@ -969,6 +980,7 @@ void AShooterCharacter::OnStartFire()
 		if (IsRunning())
 		{
 			SetRunning(false, false);
+			GetShooterCharacterMovement()->SetSprinting(false, false);
 		}
 		StartWeaponFire();
 	}
@@ -987,6 +999,7 @@ void AShooterCharacter::OnStartTargeting()
 		if (IsRunning())
 		{
 			SetRunning(false, false);
+			GetShooterCharacterMovement()->SetSprinting(false, false);
 		}
 		SetTargeting(true);
 	}
@@ -1048,6 +1061,7 @@ void AShooterCharacter::OnStartRunning()
 		}
 		StopWeaponFire();
 		SetRunning(true, false);
+		GetShooterCharacterMovement()->SetSprinting(true, false);
 	}
 }
 
@@ -1062,12 +1076,14 @@ void AShooterCharacter::OnStartRunningToggle()
 		}
 		StopWeaponFire();
 		SetRunning(true, true);
+		GetShooterCharacterMovement()->SetSprinting(true, true);
 	}
 }
 
 void AShooterCharacter::OnStopRunning()
 {
 	SetRunning(false, false);
+	GetShooterCharacterMovement()->SetSprinting(false, false);
 }
 
 bool AShooterCharacter::IsRunning() const
@@ -1087,6 +1103,7 @@ void AShooterCharacter::Tick(float DeltaSeconds)
 	if (bWantsToRunToggled && !IsRunning())
 	{
 		SetRunning(false, false);
+		GetShooterCharacterMovement()->SetSprinting(false, false);
 	}
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
 	if (MyPC && MyPC->HasHealthRegen())
@@ -1147,27 +1164,27 @@ void AShooterCharacter::Tick(float DeltaSeconds)
 			DrawDebugSphere(GetWorld(), PointToTest, 10.0f, 8, FColor::Red);
 		}
 	}
-	ClampHorizontalVelocity();
+	/*ClampHorizontalVelocity();
 	WallRunTimeline.TickTimeline(DeltaSeconds);
-	CameraTiltTimeline.TickTimeline(DeltaSeconds);
+	CameraTiltTimeline.TickTimeline(DeltaSeconds);*/
 }
 
 void AShooterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (WallRunCurve) {
-		FOnTimelineFloat UpdateWallRunFuncion;									//Setting up the timelines, adding curves and function associated and setting the loop if needed
-		UpdateWallRunFuncion.BindUFunction(this, FName("UpdateWallRun"));
-		WallRunTimeline.AddInterpFloat(WallRunCurve, UpdateWallRunFuncion);
-		WallRunTimeline.SetLooping(true);
-	}
-	if (CameraTiltCurve) {
-		FOnTimelineFloat UpdateCameraTiltFunction;
-		UpdateCameraTiltFunction.BindUFunction(this, FName("UpdateCameraTilt"));
-		CameraTiltTimeline.AddInterpFloat(CameraTiltCurve, UpdateCameraTiltFunction);
-		CameraTiltTimeline.SetLooping(false);
-	}
+	//if (WallRunCurve) {
+	//	FOnTimelineFloat UpdateWallRunFuncion;									//Setting up the timelines, adding curves and function associated and setting the loop if needed
+	//	UpdateWallRunFuncion.BindUFunction(this, FName("UpdateWallRun"));
+	//	WallRunTimeline.AddInterpFloat(WallRunCurve, UpdateWallRunFuncion);
+	//	WallRunTimeline.SetLooping(true);
+	//}
+	//if (CameraTiltCurve) {
+	//	FOnTimelineFloat UpdateCameraTiltFunction;
+	//	UpdateCameraTiltFunction.BindUFunction(this, FName("UpdateCameraTilt"));
+	//	CameraTiltTimeline.AddInterpFloat(CameraTiltCurve, UpdateCameraTiltFunction);
+	//	CameraTiltTimeline.SetLooping(false);
+	//}
 }
 
 void AShooterCharacter::BeginDestroy()
@@ -1186,39 +1203,39 @@ void AShooterCharacter::BeginDestroy()
 
 void AShooterCharacter::OnStartJump()
 {
-	/**AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);			//I left the old system commented
+	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
 	if (MyPC && MyPC->IsGameInputAllowed())
 	{
 		bPressedJump = true;
-	}*/
-	if (ConsumeJump() == "Consumed") {
+	}
+	/*if (ConsumeJump() == "Consumed") {
 		LaunchCharacter(FindLaunchVelocity(), false, true);
 		if (WallRunning)
 			EndWallRun(EWallRunEndReason::jumpedOff);
-	}
+	}*/
 }
 
-FString AShooterCharacter::ConsumeJump()
-{
-	FString IfConsumed;
-	if (WallRunning)
-	{
-		IfConsumed = "Consumed";
-	}
-	else
-	{
-		if (JumpsLeft > 0)
-		{
-			JumpsLeft--;
-			IfConsumed = "Consumed";
-		}
-		else
-		{
-			IfConsumed = "Not Consumed";
-		}
-	}
-	return IfConsumed;
-}
+//FString AShooterCharacter::ConsumeJump()
+//{
+//	FString IfConsumed;
+//	if (WallRunning)
+//	{
+//		IfConsumed = "Consumed";
+//	}
+//	else
+//	{
+//		if (JumpsLeft > 0)
+//		{
+//			JumpsLeft--;
+//			IfConsumed = "Consumed";
+//		}
+//		else
+//		{
+//			IfConsumed = "Not Consumed";
+//		}
+//	}
+//	return IfConsumed;
+//}
 
 
 void AShooterCharacter::OnStopJump()
@@ -1228,197 +1245,197 @@ void AShooterCharacter::OnStopJump()
 }
 
 
-void AShooterCharacter::ResetJump(int jumps)
-{
-	JumpsLeft = FMath::Clamp(jumps, 0, MaxJumps);
-}
-
-void AShooterCharacter::Landed(const FHitResult& Hit)
-{
-	AShooterCharacter::ResetJump(MaxJumps);
-}
-
-void AShooterCharacter::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
-{
-	if (!WallRunning) {
-		if (CanSurfaceBeWallRan(Hit.ImpactNormal)) {
-			if (GetCharacterMovement()->IsFalling()) {
-				WallRunSide = FindRunDirectionAndSide(Hit.ImpactNormal, WallRunDirection);
-				if (AreRequiredKeysDown()) {
-					BeginWallRun();
-				}
-			}
-		}
-	}
-}
-
-void AShooterCharacter::BeginWallRun()
-{
-	GetCharacterMovement()->AirControl = 1;								//setting up the AirControl, GravityScale and the PlaneConstraintNormal to slide horizontally on the wall
-	GetCharacterMovement()->GravityScale = 0;
-	GetCharacterMovement()->SetPlaneConstraintNormal(FVector::UpVector);
-	WallRunning = true;
-	BeginCameraTilt();
-	if(!WallRunTimeline.IsPlaying())
-		WallRunTimeline.Play();
-}
-
-void AShooterCharacter::EndWallRun(EWallRunEndReason Reason)
-{
-	switch (Reason)
-	{
-	case EWallRunEndReason::fallOff:
-		ResetJump(1);
-		break;
-	case EWallRunEndReason::jumpedOff:
-		ResetJump(MaxJumps - 1);
-		break;
-	}
-	GetCharacterMovement()->AirControl = 0.05f;
-	GetCharacterMovement()->GravityScale = 1;
-	GetCharacterMovement()->SetPlaneConstraintNormal(FVector::ZeroVector);
-	WallRunning = false;
-	EndCameraTilt();
-	WallRunTimeline.Stop();
-}
-
-void AShooterCharacter::BeginCameraTilt()
-{
-	if (!CameraTiltTimeline.IsPlaying())
-		CameraTiltTimeline.Play();
-}
-
-void AShooterCharacter::EndCameraTilt()
-{
-	CameraTiltTimeline.Reverse();
-}
-
-EWallRunSide AShooterCharacter::FindRunDirectionAndSide(FVector WallNormal, FVector& ResultDirection)
-{
-	if (FVector2D::DotProduct(FVector2D::FVector2D(WallNormal.X, WallNormal.Y), FVector2D::FVector2D(GetActorRightVector().X, GetActorRightVector().Y)) > 0) {
-		ResultDirection = FVector::CrossProduct(WallNormal, FVector::FVector(0, 0, 1));
-		return EWallRunSide::right;
-	}
-	else {
-		ResultDirection = FVector::CrossProduct(WallNormal, FVector::FVector(0, 0, -1));
-		return EWallRunSide::left;
-	}
-}
-
-bool AShooterCharacter::CanSurfaceBeWallRan(FVector SurfaceNormal)
-{
-	bool CanWallRun = false;
-	if (SurfaceNormal.Z < -0.05f) {
-		CanWallRun = false;
-	}
-	FVector ForSlope = FVector::FVector(SurfaceNormal.X, SurfaceNormal.Y, 0);
-	ForSlope.Normalize(0.0001f);
-	float Slope = FVector::DotProduct(ForSlope, SurfaceNormal);
-	Slope = FMath::RadiansToDegrees(FMath::Acos(Slope));
-	if (Slope < GetCharacterMovement()->GetWalkableFloorAngle()) {
-		CanWallRun = true;
-	}
-	return CanWallRun;
-}
-
-FVector AShooterCharacter::FindLaunchVelocity()
-{
-	FVector LaunchVelocity;
-	FVector LaunchDirection;
-	if (WallRunning) {
-		FVector side;
-		if (WallRunSide == EWallRunSide::left) {
-			side = FVector(0, 0, 1);
-		}
-		else {
-			side = FVector(0, 0, -1);
-		}
-		LaunchDirection = FVector::CrossProduct(WallRunDirection, side);
-	}
-	else {
-		if (GetCharacterMovement()->IsFalling()) {
-			LaunchDirection = (GetActorRightVector() * RightAxis) + (GetActorForwardVector() * ForwardAxis);		//whit this you have air control in case of more than one jump available
-		}
-	}
-	LaunchVelocity = (LaunchDirection + FVector::UpVector) * GetCharacterMovement()->JumpZVelocity;
-	return LaunchVelocity;
-}
-
-bool AShooterCharacter::AreRequiredKeysDown()
-{
-	bool AreRequired = false;
-	if (ForwardAxis > 0.1f) {
-		switch (WallRunSide)
-		{
-		case EWallRunSide::left:
-			AreRequired = RightAxis > 0.1f;
-			break;
-		case EWallRunSide::right:
-			AreRequired = RightAxis < -0.1f;
-			break;
-		}
-	}
-	else
-		AreRequired = false;
-	return AreRequired;
-}
-
-FVector2D AShooterCharacter::GetHorizontalVelocity()
-{
-	FVector2D HVelocity = FVector2D::FVector2D(GetCharacterMovement()->Velocity.X, GetCharacterMovement()->Velocity.Y);
-	return HVelocity;
-}
-
-void AShooterCharacter::SetHorizontalVelocity(FVector2D HorizontalVelocity)
-{
-	GetCharacterMovement()->Velocity = FVector::FVector(HorizontalVelocity.X, HorizontalVelocity.Y, GetCharacterMovement()->Velocity.Z);
-}
-
-void AShooterCharacter::UpdateWallRun(float Val)
-{
-	if (AreRequiredKeysDown()) {
-		FHitResult Hit;
-		FVector EndLocation;
-		if (WallRunSide == EWallRunSide::left)
-			EndLocation = (FVector::CrossProduct(WallRunDirection, FVector(0, 0, -1)) * 200) + GetActorLocation();
-		else
-			EndLocation = (FVector::CrossProduct(WallRunDirection, FVector(0, 0, 1)) * 200) + GetActorLocation();
-		FCollisionQueryParams TraceParams;
-		TraceParams.AddIgnoredActor(this);
-		if (GetWorld()->LineTraceSingleByChannel(Hit, GetActorLocation(), EndLocation, ECC_Visibility, TraceParams)) {
-			FVector Result;
-			if(FindRunDirectionAndSide(Hit.ImpactNormal, Result) == WallRunSide){
-				WallRunDirection = Result;
-				GetCharacterMovement()->Velocity = FVector(WallRunDirection.X * GetCharacterMovement()->GetModifiedMaxSpeed(), WallRunDirection.Y * GetCharacterMovement()->GetModifiedMaxSpeed(), 0);
-			}else
-				EndWallRun(EWallRunEndReason::fallOff);
-		}
-		else
-			EndWallRun(EWallRunEndReason::fallOff);
-		
-	}
-	else
-		EndWallRun(EWallRunEndReason::fallOff);
-}
-
-void AShooterCharacter::UpdateCameraTilt(float Val) 
-{
-	float NewRoll;
-	if (WallRunSide == EWallRunSide::left)
-		NewRoll = CameraTiltCurve->GetFloatValue(CameraTiltTimeline.GetPlaybackPosition()) * -1;
-	else
-		NewRoll = CameraTiltCurve->GetFloatValue(CameraTiltTimeline.GetPlaybackPosition()) * 1;
-	GetController()->SetControlRotation(FRotator(GetController()->GetControlRotation().Pitch, GetController()->GetControlRotation().Yaw, NewRoll));
-}
-
-void AShooterCharacter::ClampHorizontalVelocity()
-{
-	if (GetCharacterMovement()->IsFalling()) {
-		if ((GetHorizontalVelocity().Size() / GetCharacterMovement()->GetModifiedMaxSpeed()) > 1) {
-			SetHorizontalVelocity(GetHorizontalVelocity()/(GetHorizontalVelocity().Size() / GetCharacterMovement()->GetModifiedMaxSpeed()));
-		}
-	}
-}
+//void AShooterCharacter::ResetJump(int jumps)
+//{
+//	JumpsLeft = FMath::Clamp(jumps, 0, MaxJumps);
+//}
+//
+//void AShooterCharacter::Landed(const FHitResult& Hit)
+//{
+//	AShooterCharacter::ResetJump(MaxJumps);
+//}
+//
+//void AShooterCharacter::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+//{
+//	if (!WallRunning) {
+//		if (CanSurfaceBeWallRan(Hit.ImpactNormal)) {
+//			if (GetCharacterMovement()->IsFalling()) {
+//				WallRunSide = FindRunDirectionAndSide(Hit.ImpactNormal, WallRunDirection);
+//				if (AreRequiredKeysDown()) {
+//					BeginWallRun();
+//				}
+//			}
+//		}
+//	}
+//}
+//
+//void AShooterCharacter::BeginWallRun()
+//{
+//	GetCharacterMovement()->AirControl = 1;								//setting up the AirControl, GravityScale and the PlaneConstraintNormal to slide horizontally on the wall
+//	GetCharacterMovement()->GravityScale = 0;
+//	GetCharacterMovement()->SetPlaneConstraintNormal(FVector::UpVector);
+//	WallRunning = true;
+//	BeginCameraTilt();
+//	if(!WallRunTimeline.IsPlaying())
+//		WallRunTimeline.Play();
+//}
+//
+//void AShooterCharacter::EndWallRun(EWallRunEndReason Reason)
+//{
+//	switch (Reason)
+//	{
+//	case EWallRunEndReason::fallOff:
+//		ResetJump(1);
+//		break;
+//	case EWallRunEndReason::jumpedOff:
+//		ResetJump(MaxJumps - 1);
+//		break;
+//	}
+//	GetCharacterMovement()->AirControl = 0.05f;
+//	GetCharacterMovement()->GravityScale = 1;
+//	GetCharacterMovement()->SetPlaneConstraintNormal(FVector::ZeroVector);
+//	WallRunning = false;
+//	EndCameraTilt();
+//	WallRunTimeline.Stop();
+//}
+//
+//void AShooterCharacter::BeginCameraTilt()
+//{
+//	if (!CameraTiltTimeline.IsPlaying())
+//		CameraTiltTimeline.Play();
+//}
+//
+//void AShooterCharacter::EndCameraTilt()
+//{
+//	CameraTiltTimeline.Reverse();
+//}
+//
+//EWallRunSide AShooterCharacter::FindRunDirectionAndSide(FVector WallNormal, FVector& ResultDirection)
+//{
+//	if (FVector2D::DotProduct(FVector2D::FVector2D(WallNormal.X, WallNormal.Y), FVector2D::FVector2D(GetActorRightVector().X, GetActorRightVector().Y)) > 0) {
+//		ResultDirection = FVector::CrossProduct(WallNormal, FVector::FVector(0, 0, 1));
+//		return EWallRunSide::right;
+//	}
+//	else {
+//		ResultDirection = FVector::CrossProduct(WallNormal, FVector::FVector(0, 0, -1));
+//		return EWallRunSide::left;
+//	}
+//}
+//
+//bool AShooterCharacter::CanSurfaceBeWallRan(FVector SurfaceNormal)
+//{
+//	bool CanWallRun = false;
+//	if (SurfaceNormal.Z < -0.05f) {
+//		CanWallRun = false;
+//	}
+//	FVector ForSlope = FVector::FVector(SurfaceNormal.X, SurfaceNormal.Y, 0);
+//	ForSlope.Normalize(0.0001f);
+//	float Slope = FVector::DotProduct(ForSlope, SurfaceNormal);
+//	Slope = FMath::RadiansToDegrees(FMath::Acos(Slope));
+//	if (Slope < GetCharacterMovement()->GetWalkableFloorAngle()) {
+//		CanWallRun = true;
+//	}
+//	return CanWallRun;
+//}
+//
+//FVector AShooterCharacter::FindLaunchVelocity()
+//{
+//	FVector LaunchVelocity;
+//	FVector LaunchDirection;
+//	if (WallRunning) {
+//		FVector side;
+//		if (WallRunSide == EWallRunSide::left) {
+//			side = FVector(0, 0, 1);
+//		}
+//		else {
+//			side = FVector(0, 0, -1);
+//		}
+//		LaunchDirection = FVector::CrossProduct(WallRunDirection, side);
+//	}
+//	else {
+//		if (GetCharacterMovement()->IsFalling()) {
+//			LaunchDirection = (GetActorRightVector() * RightAxis) + (GetActorForwardVector() * ForwardAxis);		//whit this you have air control in case of more than one jump available
+//		}
+//	}
+//	LaunchVelocity = (LaunchDirection + FVector::UpVector) * GetCharacterMovement()->JumpZVelocity;
+//	return LaunchVelocity;
+//}
+//
+//bool AShooterCharacter::AreRequiredKeysDown()
+//{
+//	bool AreRequired = false;
+//	if (ForwardAxis > 0.1f) {
+//		switch (WallRunSide)
+//		{
+//		case EWallRunSide::left:
+//			AreRequired = RightAxis > 0.1f;
+//			break;
+//		case EWallRunSide::right:
+//			AreRequired = RightAxis < -0.1f;
+//			break;
+//		}
+//	}
+//	else
+//		AreRequired = false;
+//	return AreRequired;
+//}
+//
+//FVector2D AShooterCharacter::GetHorizontalVelocity()
+//{
+//	FVector2D HVelocity = FVector2D::FVector2D(GetCharacterMovement()->Velocity.X, GetCharacterMovement()->Velocity.Y);
+//	return HVelocity;
+//}
+//
+//void AShooterCharacter::SetHorizontalVelocity(FVector2D HorizontalVelocity)
+//{
+//	GetCharacterMovement()->Velocity = FVector::FVector(HorizontalVelocity.X, HorizontalVelocity.Y, GetCharacterMovement()->Velocity.Z);
+//}
+//
+//void AShooterCharacter::UpdateWallRun(float Val)
+//{
+//	if (AreRequiredKeysDown()) {
+//		FHitResult Hit;
+//		FVector EndLocation;
+//		if (WallRunSide == EWallRunSide::left)
+//			EndLocation = (FVector::CrossProduct(WallRunDirection, FVector(0, 0, -1)) * 200) + GetActorLocation();
+//		else
+//			EndLocation = (FVector::CrossProduct(WallRunDirection, FVector(0, 0, 1)) * 200) + GetActorLocation();
+//		FCollisionQueryParams TraceParams;
+//		TraceParams.AddIgnoredActor(this);
+//		if (GetWorld()->LineTraceSingleByChannel(Hit, GetActorLocation(), EndLocation, ECC_Visibility, TraceParams)) {
+//			FVector Result;
+//			if(FindRunDirectionAndSide(Hit.ImpactNormal, Result) == WallRunSide){
+//				WallRunDirection = Result;
+//				GetCharacterMovement()->Velocity = FVector(WallRunDirection.X * GetCharacterMovement()->GetModifiedMaxSpeed(), WallRunDirection.Y * GetCharacterMovement()->GetModifiedMaxSpeed(), 0);
+//			}else
+//				EndWallRun(EWallRunEndReason::fallOff);
+//		}
+//		else
+//			EndWallRun(EWallRunEndReason::fallOff);
+//		
+//	}
+//	else
+//		EndWallRun(EWallRunEndReason::fallOff);
+//}
+//
+//void AShooterCharacter::UpdateCameraTilt(float Val) 
+//{
+//	float NewRoll;
+//	if (WallRunSide == EWallRunSide::left)
+//		NewRoll = CameraTiltCurve->GetFloatValue(CameraTiltTimeline.GetPlaybackPosition()) * -1;
+//	else
+//		NewRoll = CameraTiltCurve->GetFloatValue(CameraTiltTimeline.GetPlaybackPosition()) * 1;
+//	GetController()->SetControlRotation(FRotator(GetController()->GetControlRotation().Pitch, GetController()->GetControlRotation().Yaw, NewRoll));
+//}
+//
+//void AShooterCharacter::ClampHorizontalVelocity()
+//{
+//	if (GetCharacterMovement()->IsFalling()) {
+//		if ((GetHorizontalVelocity().Size() / GetCharacterMovement()->GetModifiedMaxSpeed()) > 1) {
+//			SetHorizontalVelocity(GetHorizontalVelocity()/(GetHorizontalVelocity().Size() / GetCharacterMovement()->GetModifiedMaxSpeed()));
+//		}
+//	}
+//}
 
 
 
@@ -1580,4 +1597,9 @@ void AShooterCharacter::BuildPauseReplicationCheckPoints(TArray<FVector>& Releva
 	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
 	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X - XDiff, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
 	RelevancyCheckPoints.Add(BoundingBox.Max);
+}
+
+UShooterCharacterMovement* AShooterCharacter::GetShooterCharacterMovement() const
+{
+	return static_cast<UShooterCharacterMovement*>(GetCharacterMovement());
 }
