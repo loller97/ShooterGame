@@ -26,6 +26,13 @@ private:
 	UParticleSystemComponent* PickupPSC;
 
 protected:
+
+	UPROPERTY(EditDefaultsOnly, Category = Mesh)
+		USkeletalMeshComponent* Mesh;
+
+	UPROPERTY(VisibleDefaultsOnly, Category = Collisions)
+		UCapsuleComponent* CollisionComp;
+
 	/** FX of active pickup */
 	UPROPERTY(EditDefaultsOnly, Category=Effects)
 	UParticleSystem* ActiveFX;
@@ -64,7 +71,7 @@ protected:
 	virtual void GivePickupTo(class AShooterCharacter* Pawn);
 
 	/** handle touches */
-	void PickupOnTouch(class AShooterCharacter* Pawn);
+	virtual void PickupOnTouch(class AShooterCharacter* Pawn);
 
 	/** show and enable pickup */
 	virtual void RespawnPickup();

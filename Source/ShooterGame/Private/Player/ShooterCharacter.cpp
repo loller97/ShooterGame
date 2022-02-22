@@ -3,6 +3,7 @@
 #include "ShooterGame.h"
 #include "Weapons/ShooterWeapon.h"
 #include "Weapons/ShooterDamageType.h"
+#include "Pickups/ShooterPickup_Weapon.h"
 #include "UI/ShooterHUD.h"
 #include "Online/ShooterPlayerState.h"
 #include "Animation/AnimMontage.h"
@@ -605,11 +606,12 @@ void AShooterCharacter::DestroyInventory()
 	// remove all weapons from inventory and destroy them
 	for (int32 i = Inventory.Num() - 1; i >= 0; i--)
 	{
-		if (CurrentWeapon)
-			DropWeapon(CurrentWeapon);
+		
 		AShooterWeapon* Weapon = Inventory[i];
 		if (Weapon)
 		{
+			if (Weapon == CurrentWeapon)
+				DropWeapon(Weapon);
 			RemoveWeapon(Weapon);
 			Weapon->Destroy();
 		}
@@ -638,7 +640,31 @@ void AShooterCharacter::DropWeapon(AShooterWeapon* Weapon)
 {
 	if (Weapon && GetLocalRole() == ROLE_Authority) 
 	{
+		if (Weapon)
+		{
+			TSubclassOf<class AShooterPickup_Weapon> WeaponType = nullptr;
+			switch (Weapon->GetAmmoType())
+			{
+			case AShooterWeapon::EAmmoType::EBullet:
+			default:
+				WeaponType = PickupRifle;
+				break;
+			case AShooterWeapon::EAmmoType::ERocket:
+				WeaponType = PickupLauncher;
+				break;
+			}
 
+			if (WeaponType != nullptr)
+			{
+				FActorSpawnParameters SpawnInfo;
+				SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+				AShooterPickup_Weapon* NeWWeaponPickup = GetWorld()->SpawnActor<AShooterPickup_Weapon>(WeaponType, GetActorLocation(), GetActorRotation(), SpawnInfo);
+				GetMesh()->MoveIgnoreActors.Add(NeWWeaponPickup);
+				GetCapsuleComponent()->MoveIgnoreActors.Add(NeWWeaponPickup);
+				NeWWeaponPickup->SetAmmo(Weapon->GetCurrentAmmo());
+				NeWWeaponPickup->SetLifeSpan(10);
+			}
+		}
 	}
 }
 
@@ -909,6 +935,7 @@ void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 }
 
 
+
 void AShooterCharacter::FireTrigger(float Val)
 {
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
@@ -1164,6 +1191,7 @@ void AShooterCharacter::Tick(float DeltaSeconds)
 			DrawDebugSphere(GetWorld(), PointToTest, 10.0f, 8, FColor::Red);
 		}
 	}
+
 	/*ClampHorizontalVelocity();
 	WallRunTimeline.TickTimeline(DeltaSeconds);
 	CameraTiltTimeline.TickTimeline(DeltaSeconds);*/

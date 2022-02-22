@@ -6,10 +6,10 @@
 
 AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	UCapsuleComponent* CollisionComp = ObjectInitializer.CreateDefaultSubobject<UCapsuleComponent>(this, TEXT("CollisionComp"));
+	CollisionComp = ObjectInitializer.CreateDefaultSubobject<UCapsuleComponent>(this, TEXT("CollisionComp"));
 	CollisionComp->InitCapsuleSize(40.0f, 50.0f);
 	CollisionComp->SetCollisionObjectType(COLLISION_PICKUP);
-	CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	CollisionComp->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	RootComponent = CollisionComp;
@@ -18,6 +18,10 @@ AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Su
 	PickupPSC->bAutoActivate = false;
 	PickupPSC->bAutoDestroy = false;
 	PickupPSC->SetupAttachment(RootComponent);
+
+	Mesh = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("Mesh"));
+	Mesh->bAutoActivate = false;
+	Mesh->SetupAttachment(RootComponent);
 
 	RespawnTime = 10.0f;
 	bIsActive = false;
@@ -90,7 +94,7 @@ void AShooterPickup::RespawnPickup()
 
 	for (AActor* OverlappingPawn : OverlappingPawns)
 	{
-		PickupOnTouch(CastChecked<AShooterCharacter>(OverlappingPawn));	
+		PickupOnTouch(CastChecked<AShooterCharacter>(OverlappingPawn));
 	}
 }
 
@@ -147,10 +151,10 @@ void AShooterPickup::OnRep_IsActive()
 	}
 }
 
-void AShooterPickup::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
+void AShooterPickup::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps( OutLifetimeProps );
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME( AShooterPickup, bIsActive );
-	DOREPLIFETIME( AShooterPickup, PickedUpBy );
+	DOREPLIFETIME(AShooterPickup, bIsActive);
+	DOREPLIFETIME(AShooterPickup, PickedUpBy);
 }

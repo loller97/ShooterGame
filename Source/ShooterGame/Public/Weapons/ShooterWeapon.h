@@ -111,6 +111,11 @@ class AShooterWeapon : public AActor
 	/** consume a bullet */
 	void UseAmmo();
 
+	uint8 GetHowManyAmmoTypes() const
+	{
+		return (uint8)EAmmoType::EMax;
+	}
+
 	/** query ammo type */
 	virtual EAmmoType GetAmmoType() const
 	{
@@ -535,5 +540,8 @@ protected:
 	FORCEINLINE USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns Mesh3P subobject **/
 	FORCEINLINE USkeletalMeshComponent* GetMesh3P() const { return Mesh3P; }
+
+public:
+	void SetAmmo(int32 ammo);
 };
 

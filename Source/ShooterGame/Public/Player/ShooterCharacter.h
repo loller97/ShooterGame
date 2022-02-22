@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ShooterTypes.h"
+#include "Pickups/ShooterPickup_Weapon.h"
 #include "ShooterCharacter.generated.h"
 
 class UShooterCharacterMovement;
@@ -93,6 +94,12 @@ class AShooterCharacter : public ACharacter
 	*/
 	void RemoveWeapon(class AShooterWeapon* Weapon);
 
+
+	/**
+	* [server] drop weapon creating a pickup for it
+	*
+	* @param Weapon	Weapon to drop.
+	*/
 	void DropWeapon(class AShooterWeapon* Weapon);
 
 	/**
@@ -150,6 +157,8 @@ class AShooterCharacter : public ACharacter
 
 	/** setup pawn specific input handlers */
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
+
+	void Interact();
 
 	/**
 	* Handle analog trigger for firing
@@ -292,11 +301,15 @@ class AShooterCharacter : public ACharacter
 
 	/** Update the team color of all player meshes. */
 	void UpdateTeamColorsAllMIDs();
+
 private:
 
 	/** pawn mesh: 1st person view */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* Mesh1P;
+
+	UPROPERTY(EditAnywhere, Category = Pickup, meta = (AllowPrivateAccess = true))
+	USphereComponent* CollectionRange;
 protected:
 
 	/** socket or bone name for attaching weapon mesh */
@@ -306,6 +319,15 @@ protected:
 	/** default inventory list */
 	UPROPERTY(EditDefaultsOnly, Category = Inventory)
 	TArray<TSubclassOf<class AShooterWeapon> > DefaultInventoryClasses;
+
+
+	//Pickup bluprints for every gun
+	UPROPERTY(EditDefaultsOnly, Category = Pickup)
+	TSubclassOf<class AShooterPickup_Weapon> PickupRifle;
+
+	UPROPERTY(EditDefaultsOnly, Category = Pickup)
+		TSubclassOf<class AShooterPickup_Weapon> PickupLauncher;
+
 
 	/** weapons in inventory */
 	UPROPERTY(Transient, Replicated)

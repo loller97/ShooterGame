@@ -990,3 +990,18 @@ float AShooterWeapon::GetEquipDuration() const
 {
 	return EquipDuration;
 }
+
+void AShooterWeapon::SetAmmo(int32 ammo)
+{
+	if (ammo < WeaponConfig.AmmoPerClip)
+	{
+		CurrentAmmoInClip = ammo;
+		CurrentAmmo = 0;
+	}
+	else
+	{
+		CurrentAmmoInClip = ammo;
+		ammo -= CurrentAmmoInClip;
+		CurrentAmmo = ammo;
+	}
+}
