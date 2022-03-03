@@ -4,6 +4,7 @@
 
 #include "GameFramework/Actor.h"
 #include "ShooterWeapon_Projectile.h"
+#include "ShooterWeapon_SnowBall.h"
 #include "ShooterProjectile.generated.h"
 
 class UProjectileMovementComponent;
@@ -23,7 +24,7 @@ class AShooterProjectile : public AActor
 
 	/** handle hit */
 	UFUNCTION()
-	void OnImpact(const FHitResult& HitResult);
+	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& HitResult);
 
 private:
 	/** movement component */
@@ -36,17 +37,27 @@ private:
 
 	UPROPERTY(VisibleDefaultsOnly, Category=Projectile)
 	UParticleSystemComponent* ParticleComp;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	UStaticMeshComponent* Mesh;
+
 protected:
 
 	/** effects for explosion */
 	UPROPERTY(EditDefaultsOnly, Category=Effects)
 	TSubclassOf<class AShooterExplosionEffect> ExplosionTemplate;
 
+	/** effects for explosion */
+	UPROPERTY(EditDefaultsOnly, Category = Effects)
+		bool FreezeProjectile = false;
+
 	/** controller that fired me (cache for damage calculations) */
 	TWeakObjectPtr<AController> MyController;
 
 	/** projectile data */
 	struct FProjectileWeaponData WeaponConfig;
+
+	struct FSnowBallWeaponData WeaponConfigS;
 
 	/** did it explode? */
 	UPROPERTY(Transient, ReplicatedUsing=OnRep_Exploded)
@@ -55,6 +66,8 @@ protected:
 	/** [client] explosion happened */
 	UFUNCTION()
 	void OnRep_Exploded();
+
+	void FreezeActors(const UObject* WorldContextObject, const FVector& Origin, float DamageRadius, const TArray<AActor*>& IgnoreActors, AActor* DamageCauser = NULL, AController* InstigatedByController = NULL);
 
 	/** trigger explosion */
 	void Explode(const FHitResult& Impact);

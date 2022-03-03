@@ -303,6 +303,21 @@ float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dam
 	return ActualDamage;
 }
 
+void AShooterCharacter::Freezing()
+{
+	GetMesh()->SetMaterial(0, FreezeMaterial);
+	CustomTimeDilation = 0;
+	FTimerHandle Handle;
+	Freezed = true;
+	GetWorldTimerManager().SetTimer(Handle, this, &AShooterCharacter::DeFreezing, 5, false);
+}
+
+void AShooterCharacter::DeFreezing()
+{
+	CustomTimeDilation = OriginalTimeDilation;
+	GetMesh()->SetMaterial(0, OriginalMaterial);
+	Freezed = false;
+}
 
 bool AShooterCharacter::CanDie(float KillingDamage, FDamageEvent const& DamageEvent, AController* Killer, AActor* DamageCauser) const
 {
@@ -606,7 +621,7 @@ void AShooterCharacter::DestroyInventory()
 	// remove all weapons from inventory and destroy them
 	for (int32 i = Inventory.Num() - 1; i >= 0; i--)
 	{
-		
+
 		AShooterWeapon* Weapon = Inventory[i];
 		if (Weapon)
 		{
@@ -638,7 +653,7 @@ void AShooterCharacter::RemoveWeapon(AShooterWeapon* Weapon)
 
 void AShooterCharacter::DropWeapon(AShooterWeapon* Weapon)
 {
-	if (Weapon && GetLocalRole() == ROLE_Authority) 
+	if (Weapon && GetLocalRole() == ROLE_Authority)
 	{
 		if (Weapon)
 		{
@@ -652,6 +667,9 @@ void AShooterCharacter::DropWeapon(AShooterWeapon* Weapon)
 			case AShooterWeapon::EAmmoType::ERocket:
 				WeaponType = PickupLauncher;
 				break;
+			case AShooterWeapon::EAmmoType::ESnowBall:
+				WeaponType = PickupLauncherSnowBall;
+				break;
 			}
 
 			if (WeaponType != nullptr)
@@ -662,6 +680,7 @@ void AShooterCharacter::DropWeapon(AShooterWeapon* Weapon)
 				GetMesh()->MoveIgnoreActors.Add(NeWWeaponPickup);
 				GetCapsuleComponent()->MoveIgnoreActors.Add(NeWWeaponPickup);
 				NeWWeaponPickup->SetAmmo(Weapon->GetCurrentAmmo());
+				NeWWeaponPickup->SetIsRespawnable(false);
 				NeWWeaponPickup->SetLifeSpan(10);
 			}
 		}
@@ -902,9 +921,9 @@ void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	PlayerInputComponent->BindAxis("MoveForward", this, &AShooterCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AShooterCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("MoveUp", this, &AShooterCharacter::MoveUp);
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("Turn", this, &AShooterCharacter::AddControllerYawInput);
 	PlayerInputComponent->BindAxis("TurnRate", this, &AShooterCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUp", this, &AShooterCharacter::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AShooterCharacter::LookUpAtRate);
 
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
@@ -934,7 +953,17 @@ void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	PlayerInputComponent->BindAction("Run", IE_Released, this, &AShooterCharacter::OnStopRunning);
 }
 
+void AShooterCharacter::AddControllerPitchInput(float Val)
+{
+	if (!Freezed)
+		Super::AddControllerPitchInput(Val);
+}
 
+void AShooterCharacter::AddControllerYawInput(float Val)
+{
+	if (!Freezed)
+		Super::AddControllerYawInput(Val);
+}
 
 void AShooterCharacter::FireTrigger(float Val)
 {
@@ -1001,16 +1030,20 @@ void AShooterCharacter::LookUpAtRate(float Val)
 
 void AShooterCharacter::OnStartFire()
 {
-	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
-	if (MyPC && MyPC->IsGameInputAllowed())
+	if (!Freezed)
 	{
-		if (IsRunning())
+		AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
+		if (MyPC && MyPC->IsGameInputAllowed())
 		{
-			SetRunning(false, false);
-			GetShooterCharacterMovement()->SetSprinting(false, false);
+			if (IsRunning())
+			{
+				SetRunning(false, false);
+				GetShooterCharacterMovement()->SetSprinting(false, false);
+			}
+			StartWeaponFire();
 		}
-		StartWeaponFire();
 	}
+
 }
 
 void AShooterCharacter::OnStopFire()
@@ -1067,12 +1100,15 @@ void AShooterCharacter::OnPrevWeapon()
 
 void AShooterCharacter::OnReload()
 {
-	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
-	if (MyPC && MyPC->IsGameInputAllowed())
+	if (!Freezed)
 	{
-		if (CurrentWeapon)
+		AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
+		if (MyPC && MyPC->IsGameInputAllowed())
 		{
-			CurrentWeapon->StartReload();
+			if (CurrentWeapon)
+			{
+				CurrentWeapon->StartReload();
+			}
 		}
 	}
 }
@@ -1200,6 +1236,11 @@ void AShooterCharacter::Tick(float DeltaSeconds)
 void AShooterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	OriginalTimeDilation = CustomTimeDilation;
+	OriginalMaterial = GetMesh()->GetMaterial(0)->GetMaterial();
+
+	Freezed = false;
 
 	//if (WallRunCurve) {
 	//	FOnTimelineFloat UpdateWallRunFuncion;									//Setting up the timelines, adding curves and function associated and setting the loop if needed

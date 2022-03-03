@@ -58,6 +58,10 @@ class AShooterCharacter : public ACharacter
 	/** [client] called when replication is paused for this actor */
 	virtual void OnReplicationPausedChanged(bool bIsReplicationPaused) override;
 
+	virtual void AddControllerPitchInput(float Val) override;
+
+	virtual void AddControllerYawInput(float Val) override;
+
 	/**
 	* Add camera pitch to first person mesh.
 	*
@@ -308,8 +312,14 @@ private:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* Mesh1P;
 
-	UPROPERTY(EditAnywhere, Category = Pickup, meta = (AllowPrivateAccess = true))
-	USphereComponent* CollectionRange;
+	UPROPERTY(EditDefaultsOnly, Category = Mesh)
+		UMaterial* FreezeMaterial;
+
+	float OriginalTimeDilation;
+	UMaterial* OriginalMaterial;
+
+	bool Freezed;
+
 protected:
 
 	/** socket or bone name for attaching weapon mesh */
@@ -327,6 +337,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = Pickup)
 		TSubclassOf<class AShooterPickup_Weapon> PickupLauncher;
+
+	UPROPERTY(EditDefaultsOnly, Category = Pickup)
+		TSubclassOf<class AShooterPickup_Weapon> PickupLauncherSnowBall;
 
 
 	/** weapons in inventory */
@@ -540,6 +553,8 @@ private:
 	//////////////////////////////////////////////////////////////////////////
 	// Damage & death
 
+	void DeFreezing();
+
 public:
 
 	/** Identifies if pawn is in its dying state */
@@ -552,6 +567,8 @@ public:
 
 	/** Take damage, handle death */
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, class AActor* DamageCauser) override;
+
+	void Freezing();
 
 	/** Pawn suicide */
 	virtual void Suicide();

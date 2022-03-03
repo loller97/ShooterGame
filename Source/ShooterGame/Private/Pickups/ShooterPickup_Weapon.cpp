@@ -27,6 +27,11 @@ void AShooterPickup_Weapon::SetAmmo(int32 ammo)
 	Ammo = ammo;
 }
 
+void AShooterPickup_Weapon::SetIsRespawnable(bool Respawn)
+{
+	IsRespawnable = Respawn;
+}
+
 bool AShooterPickup_Weapon::IsForWeapon(UClass* WeaponClass)
 {
 	return WeaponType->IsChildOf(WeaponClass);

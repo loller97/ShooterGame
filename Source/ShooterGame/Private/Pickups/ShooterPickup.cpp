@@ -21,7 +21,9 @@ AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Su
 
 	Mesh = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("Mesh"));
 	Mesh->bAutoActivate = false;
+	
 	Mesh->SetupAttachment(RootComponent);
+
 
 	RespawnTime = 10.0f;
 	bIsActive = false;
@@ -34,6 +36,12 @@ AShooterPickup::AShooterPickup(const FObjectInitializer& ObjectInitializer) : Su
 void AShooterPickup::BeginPlay()
 {
 	Super::BeginPlay();
+
+	Mesh->SetIsReplicated(true);
+
+	Mesh->SetActive(true);
+
+	
 
 	RespawnPickup();
 
@@ -110,6 +118,13 @@ void AShooterPickup::OnPickedUp()
 		PickupPSC->DeactivateSystem();
 	}
 
+	if (Mesh)
+	{
+		Mesh->SetActive(false);
+		SetActorHiddenInGame(true);
+	}
+		
+
 	if (PickupSound && PickedUpBy)
 	{
 		UGameplayStatics::SpawnSoundAttached(PickupSound, PickedUpBy->GetRootComponent());
@@ -129,6 +144,12 @@ void AShooterPickup::OnRespawned()
 	{
 		PickupPSC->DeactivateSystem();
 	}
+	if (Mesh)
+	{
+		Mesh->SetActive(true);
+		SetActorHiddenInGame(false);
+	}
+		
 
 	const bool bJustSpawned = CreationTime <= (GetWorld()->GetTimeSeconds() + 5.0f);
 	if (RespawnSound && !bJustSpawned)

@@ -50,6 +50,8 @@ public:
 	//sets the ammo you get from this pickup
 	void SetAmmo(int32 ammo);
 
+	void SetIsRespawnable(bool Respawn);
+
 };
 
 
